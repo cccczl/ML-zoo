@@ -52,18 +52,15 @@ def __convert_to_coco_bbox(b, input_size):
 def process_output(output, image_id, image_size):
     detection_boxes, detection_classes, detection_scores, num_detections = output
 
-    detections_in_image = []
-    for i in range(int(num_detections[0])):
-        detections_in_image.append(
-            {
-                'image_id': image_id.numpy(),
-                'category_id': int(detection_classes[0, i]) + 1,
-                'bbox': __convert_to_coco_bbox(detection_boxes[0, i], image_size), 
-                'score': detection_scores[0, i]
-            }
-        )
-
-    return detections_in_image
+    return [
+        {
+            'image_id': image_id.numpy(),
+            'category_id': int(detection_classes[0, i]) + 1,
+            'bbox': __convert_to_coco_bbox(detection_boxes[0, i], image_size),
+            'score': detection_scores[0, i],
+        }
+        for i in range(int(num_detections[0]))
+    ]
 
 
 if __name__ == '__main__':
@@ -74,7 +71,7 @@ if __name__ == '__main__':
 
     # Get the COCO 2017 validation set
     coco_dataset = tfds.load('coco/2017', split='validation')
-    
+
     # Setup the TensorFlow Lite interpreter
     interpreter = tf.lite.Interpreter(model_path=args.path)
     interpreter.allocate_tensors()
@@ -96,7 +93,7 @@ if __name__ == '__main__':
         interpreter.invoke()
 
         output = [ interpreter.get_tensor(o) for o in output_t ]
-        
+
         detection_outputs = process_output(output, data_id, (image_shape[0], image_shape[1]))
         detections += detection_outputs
 

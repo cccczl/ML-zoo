@@ -25,9 +25,7 @@ def read_label_map(label_map_path):
     with open(label_map_path, "r") as file:
         for line in file:
             line.replace(" ", "")
-            if line == "item{":
-                pass
-            elif line == "}":
+            if line in ["item{", "}"]:
                 pass
             elif "id" in line:
                 item_id = int(line.split(":", 1)[1].strip())

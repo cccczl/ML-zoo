@@ -27,13 +27,11 @@ if __name__ == "__main__":
         data = f.read()
 
     labels = ast.literal_eval(data)
-    
+
     # Include the background class as there are 1001 classes
     class_labels = ["background"]
 
-    for _, l in labels.items():
-        class_labels.append(l)
-
+    class_labels.extend(l for _, l in labels.items())
     with open("labelmappings.txt", "w") as f:
         for l in class_labels:
-            f.write("{}\n".format(l))
+            f.write(f"{l}\n")

@@ -29,7 +29,9 @@ class ImageCorpusReader:
 
     def __init__(self, data_directory, validation_dir):
         self.data_directory = data_directory
-        self.validation_filenames = tf.io.gfile.glob(data_directory + '/' + validation_dir + "/validation-*")
+        self.validation_filenames = tf.io.gfile.glob(
+            f'{data_directory}/{validation_dir}/validation-*'
+        )
 
     @staticmethod
     def decode_image(image):
@@ -105,8 +107,7 @@ class DatasetLoader:
         corpus.ensure_availability()
 
         corpus_reader = ImageCorpusReader(self.data_directory, corpus.VALIDATION_DIR)
-        validation_dataset = corpus_reader.prepare_dataset(dataset_size)
-        return validation_dataset
+        return corpus_reader.prepare_dataset(dataset_size)
 
 if __name__ == "__main__":
     data_loader = DatasetLoader('data')

@@ -36,7 +36,7 @@ def rnnoise_model(timesteps, batch_size, is_training):
     constraint = WeightClip(-0.499, 0.499)
     reg = tf.keras.regularizers.L2(0.000001)
 
-    stateful = False if is_training else True
+    stateful = not is_training
 
     main_input = tf.keras.Input(shape=(timesteps, 42), batch_size=batch_size, name='main_input')
 
@@ -68,9 +68,7 @@ def rnnoise_model(timesteps, batch_size, is_training):
     denoise_out = tf.keras.layers.Dense(units=22, activation='sigmoid', kernel_constraint=constraint,
                                         bias_constraint=constraint, name='denoise_output')(denoise_gru_out)
 
-    model = tf.keras.Model([main_input],
-                           [denoise_out, vad_out])
-    return model
+    return tf.keras.Model([main_input], [denoise_out, vad_out])
 
 
 def rnnoise_model_tflite(timesteps):
@@ -102,6 +100,7 @@ def rnnoise_model_tflite(timesteps):
 
     denoise_out = tf.keras.layers.Dense(units=22, activation='sigmoid', name='denoise_output')(denoise_gru_out)
 
-    model = tf.keras.Model([main_input, vad_gru_state, noise_gru_state, denoise_gru_state],
-                           [denoise_out, vad_out, vad_gru_out, noise_gru_out, denoise_gru_out])
-    return model
+    return tf.keras.Model(
+        [main_input, vad_gru_state, noise_gru_state, denoise_gru_state],
+        [denoise_out, vad_out, vad_gru_out, noise_gru_out, denoise_gru_out],
+    )

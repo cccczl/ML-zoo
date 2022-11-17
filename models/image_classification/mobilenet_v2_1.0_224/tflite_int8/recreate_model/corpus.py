@@ -42,7 +42,7 @@ class ImageCorpusExtractor:
 
 
     def extract_zip_file(self, tar_file_path, target_directory):
-            """
+        """
             Extract all necessary files `source` from `tar_file_name` into `target_directory`
 
             Args:
@@ -52,9 +52,9 @@ class ImageCorpusExtractor:
             """
             
 
-            print('Extracting {}...'.format(tar_file_path))
-            with tarfile.open(tar_file_path) as tar:
-                tar.extractall(target_directory)
+        print(f'Extracting {tar_file_path}...')
+        with tarfile.open(tar_file_path) as tar:
+            tar.extractall(target_directory)
 
     def extract_dataset(self, zip_file, out_directory):
         zip_path = os.path.join(self.data_directory, zip_file)

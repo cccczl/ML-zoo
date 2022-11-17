@@ -182,10 +182,7 @@ class LibriSpeechMfcc:
             file["wav_filename"] = file["wav_filename"].str.replace(
                 r"(^[^/])", lambda m: os.path.join(csv_dir, m.group(1))
             )  # pylint: disable=cell-var-from-loop
-            if source_data is None:
-                source_data = file
-            else:
-                source_data = source_data.append(file)
+            source_data = file if source_data is None else source_data.append(file)
         return source_data
 
     def num_steps(self, batch):

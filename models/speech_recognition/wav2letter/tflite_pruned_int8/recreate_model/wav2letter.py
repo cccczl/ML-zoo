@@ -81,7 +81,7 @@ def create_wav2letter(batch_size=1, no_stride_count=7) -> tf.keras.models.Model:
     # Add non-linearity
     x = leaky_relu(x)
     # layers without striding of output size [batch_size, max_time / 2, 250]
-    for i in range(0, no_stride_count):
+    for _ in range(no_stride_count):
         x = layer.Conv2D(
             filters=250,
             kernel_size=[1, 7],

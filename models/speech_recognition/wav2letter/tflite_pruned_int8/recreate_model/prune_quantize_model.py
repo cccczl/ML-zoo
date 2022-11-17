@@ -32,7 +32,7 @@ from librispeech_mfcc import LibriSpeechMfcc
 
 def log(std):
     """Log the given string to the standard output."""
-    print("******* {}".format(std), flush=True)
+    print(f"******* {std}", flush=True)
 
 
 def create_directories(paths):
@@ -76,15 +76,16 @@ def setup_callbacks(checkpoint_path, log_dir):
 def get_lr_schedule(steps_per_epoch, learning_rate=1e-5, lr_schedule_config=[[1.0, 0.1, 0.01, 0.001]]):
     """Returns learn rate schedule for baseline training and optimization fine-tuning."""
     initial_learning_rate = learning_rate
-    lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
-        boundaries=list(p[1] * steps_per_epoch for p in lr_schedule_config),
-        values=[initial_learning_rate] + list(p[0] * initial_learning_rate for p in lr_schedule_config))
-    return lr_schedule
+    return tf.keras.optimizers.schedules.PiecewiseConstantDecay(
+        boundaries=[p[1] * steps_per_epoch for p in lr_schedule_config],
+        values=[initial_learning_rate]
+        + [p[0] * initial_learning_rate for p in lr_schedule_config],
+    )
 
 
 def prune_model(model):
     """Performs pruning, fine-tuning and returns stripped pruned model"""
-    log("Pruning model to {} sparsity".format(args.sparsity))
+    log(f"Pruning model to {args.sparsity} sparsity")
     (training_data, training_num_steps) = get_data("train")
     (validation_data, validation_num_steps) = get_data("val")
     (evaluation_data, eval_num_steps) = get_data("eval")
@@ -119,12 +120,17 @@ def prune_model(model):
         validation_steps=validation_num_steps,
     )
 
-    log("Evaluating {}".format(model.name))
+    log(f"Evaluating {model.name}")
     pruned_model.evaluate(x=evaluation_data, steps=eval_num_steps)
 
     stripped_model = tfmot.sparsity.keras.strip_pruning(model)
 
-    stripped_model.save_weights(os.path.join(export_checkpoint_path, "pruned-{}.h5".format(str(args.finetuning_epochs))))
+    stripped_model.save_weights(
+        os.path.join(
+            export_checkpoint_path, f"pruned-{str(args.finetuning_epochs)}.h5"
+        )
+    )
+
 
     return stripped_model
 
@@ -132,10 +138,9 @@ def prune_model(model):
 def prepare_model_for_inference(model):
 
     layer_input = tf.keras.layers.Input((296, 39), batch_size=1)
-    static_shaped_model = tf.keras.models.Model(
+    return tf.keras.models.Model(
         inputs=[layer_input], outputs=[model.call(layer_input)]
     )
-    return static_shaped_model
 
 
 def tflite_conversion(model, tflite_path, conversion_type="fp32"):
@@ -179,7 +184,7 @@ def evaluate_tflite(tflite_path):
     (evaluation_data, eval_num_steps) = get_data("eval")
     tflite_path = tflite_path
 
-    log("Setting number of used threads to {}".format(multiprocessing.cpu_count()))
+    log(f"Setting number of used threads to {multiprocessing.cpu_count()}")
     interpreter = tf.lite.Interpreter(
         model_path=tflite_path, num_threads=multiprocessing.cpu_count()
     )
@@ -188,7 +193,7 @@ def evaluate_tflite(tflite_path):
     output_details = interpreter.get_output_details()[0]
 
     input_shape = input_chunk["shape"]
-    log("eval_model() - input_shape: {}".format(input_shape))
+    log(f"eval_model() - input_shape: {input_shape}")
     input_dtype = input_chunk["dtype"]
     output_dtype = output_details["dtype"]
 
@@ -204,7 +209,8 @@ def evaluate_tflite(tflite_path):
     else:
         output_scale, output_zero_point = 1, 0
 
-    log("Running {} iterations".format(eval_num_steps))
+    log(f"Running {eval_num_steps} iterations")
+    context = 24 + 2 * (7 * 3 + 16)  # = 98 - theoretical max receptive field on each side
     for i_iter, (data, label) in enumerate(
             tqdm(evaluation_data, total=eval_num_steps)
     ):
@@ -220,7 +226,6 @@ def evaluate_tflite(tflite_path):
             log('Input length is odd, zero-padding to even (first layer has stride 2)')
             data = np.concatenate([data, np.zeros((1, 1, data.shape[2]), dtype=input_dtype)], axis=1)
 
-        context = 24 + 2 * (7 * 3 + 16)  # = 98 - theoretical max receptive field on each side
         size = input_chunk['shape'][1]
         inner = size - 2 * context
         data_end = data.shape[1]
@@ -266,7 +271,7 @@ def evaluate_tflite(tflite_path):
         complete = np.concatenate(outputs, axis=2)
         results.append(get_metrics("ler")(label, complete))
 
-    log("Avg LER: {}".format(np.mean(results) * 100))
+    log(f"Avg LER: {np.mean(results) * 100}")
 
 
 def main(args):

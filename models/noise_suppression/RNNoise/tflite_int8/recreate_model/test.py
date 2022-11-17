@@ -112,9 +112,7 @@ def pesq_calculation(clean_wav, degraded_wav):
     clean_audio = librosa.load(clean_wav, sr=16000)[0]
     degraded_audio = librosa.load(degraded_wav, sr=16000)[0]
 
-    pesq_score = pesq.pesq(ref=clean_audio, deg=degraded_audio, fs=16000, mode='wb')
-
-    return pesq_score
+    return pesq.pesq(ref=clean_audio, deg=degraded_audio, fs=16000, mode='wb')
 
 
 def denoise_and_calc_average_pesq_folder_wavs(clean_wavs, noisy_wavs, ckpt, tflite_model):
@@ -191,8 +189,6 @@ def calc_average_pesq_folder_wavs(clean_speech_folder, noisy_speech_folder):
             num_tested_files += 1
         except:
             logging.warning(f"Could not process {clean_file}, make sure it exists in both clean and noisy folders.")
-            pass
-
     return sum_pesq / num_tested_files
 
 

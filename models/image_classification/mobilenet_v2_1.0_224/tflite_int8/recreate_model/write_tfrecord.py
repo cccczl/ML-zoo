@@ -88,7 +88,7 @@ class TFRecordWriter:
         
         with tf.io.TFRecordWriter(os.path.join(self.data_directory, tf_record_filename)) as writer:
             for image_file_name, class_label in self.class_label_dict.items():
-                image_path = self.data_directory + '/' + self.image_directory + '/' + image_file_name
+                image_path = f'{self.data_directory}/{self.image_directory}/{image_file_name}'
                 with open(image_path, 'rb') as image:
                     writer.write(self._create_feature(image.read(), class_label).SerializeToString())
 

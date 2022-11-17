@@ -16,11 +16,11 @@
 
 def get_label_dict():
     alphabet = "abcdefghijklmnopqrstuvwxyz' @"
-    return [c for c in alphabet]
+    return list(alphabet)
 
 if __name__ == "__main__":
     labels = get_label_dict()
 
     with open("labelmappings.txt", "w") as f:
         for l in labels:
-            f.write('{}\n'.format(l))
+            f.write(f'{l}\n')

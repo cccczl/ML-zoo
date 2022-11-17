@@ -74,8 +74,7 @@ class RNNoisePreProcess:
             for i in range(self.FREQ_SIZE):
                 X[i] *= gf[i]
 
-        out_frame = self._frame_synythesis(X)
-        return out_frame
+        return self._frame_synythesis(X)
 
     def process_frame(self, audio_window):
         """Process the input audio frame ready for inputting to RNNoise model."""
@@ -130,10 +129,19 @@ class RNNoisePreProcess:
         pitch_buf = np.zeros(self.PITCH_BUF_SIZE >> 1)  # Half the pitch buffer size
 
         # Shift elements in the pitch buffer down and populate with the new audio window.
-        self.pitch_buf[0:self.PITCH_BUF_SIZE-self.FRAME_SIZE] = self.pitch_buf[self.FRAME_SIZE:
-                                                                               self.FRAME_SIZE+self.PITCH_BUF_SIZE-self.FRAME_SIZE]
-        self.pitch_buf[self.PITCH_BUF_SIZE-self.FRAME_SIZE:self.PITCH_BUF_SIZE-self.FRAME_SIZE+self.FRAME_SIZE] = \
-            audio_window[0:self.FRAME_SIZE]
+        self.pitch_buf[: self.PITCH_BUF_SIZE - self.FRAME_SIZE] = self.pitch_buf[
+            self.FRAME_SIZE : self.FRAME_SIZE
+            + self.PITCH_BUF_SIZE
+            - self.FRAME_SIZE
+        ]
+
+        self.pitch_buf[
+            self.PITCH_BUF_SIZE
+            - self.FRAME_SIZE : self.PITCH_BUF_SIZE
+            - self.FRAME_SIZE
+            + self.FRAME_SIZE
+        ] = audio_window[: self.FRAME_SIZE]
+
 
         pitch_buf = self._pitch_downsample(pitch_buf, self.PITCH_BUF_SIZE)
 
@@ -228,10 +236,10 @@ class RNNoisePreProcess:
         x = np.zeros(self.WINDOW_SIZE)
 
         # Move old audio down and populate end with latest audio window.
-        x[0:self.FRAME_SIZE] = analysis_mem[0:self.FRAME_SIZE]
+        x[:self.FRAME_SIZE] = analysis_mem[:self.FRAME_SIZE]
         for i in range(self.FRAME_SIZE):
             x[self.FRAME_SIZE + i] = audio_window[i]
-        analysis_mem[0:self.FRAME_SIZE] = audio_window[0:self.FRAME_SIZE]
+        analysis_mem[:self.FRAME_SIZE] = audio_window[:self.FRAME_SIZE]
 
         x = self._apply_window(x)
         # Calculate FFT
@@ -262,7 +270,7 @@ class RNNoisePreProcess:
         fft_out = np.fft.fft(x, num_fft) / num_fft
 
         # Only want to take FREQ_SIZE elements of the FFT.
-        return fft_out[0:self.FREQ_SIZE]
+        return fft_out[:self.FREQ_SIZE]
 
     def _compute_band_energy(self, fft_X):
         """Calculate energy in different frequency bands.
@@ -335,9 +343,7 @@ class RNNoisePreProcess:
 
         # Modify auto-correlation by summing with auto-correlation for different lags.
         for k in range(lag+1):
-            d = 0
-            for i in range(k+fastN, n):
-                d += x[i] * x[i-k]
+            d = sum(x[i] * x[i-k] for i in range(k+fastN, n))
             ac[k] += d
 
         return shift, ac
@@ -346,9 +352,7 @@ class RNNoisePreProcess:
         """Naive cross correlation calculation.
         Ref: https://github.com/xiph/rnnoise/blob/1cbdbcf1283499bbb2230a6b0f126eb9b236defd/src/pitch.c#L218"""
         for i in range(max_pitch):
-            sum_ = 0
-            for j in range(_len):
-                sum_ += _x[j] * _y[i + j]
+            sum_ = sum(_x[j] * _y[i + j] for j in range(_len))
             ac[i] = sum_
 
         return ac
@@ -362,9 +366,7 @@ class RNNoisePreProcess:
         if ac[0] != 0:
             for i in range(p):
                 # Sum up this iteration's reflection coefficient
-                rr = 0
-                for j in range(i):
-                    rr += lpc[j] * ac[i - j]
+                rr = sum(lpc[j] * ac[i - j] for j in range(i))
                 rr += ac[i + 1]
                 r = -rr / error
 
@@ -435,7 +437,7 @@ class RNNoisePreProcess:
             xcorr[i] = 0
             if abs(i-2*best_pitch[0]) > 2 and abs(i-2*best_pitch[1]) > 2:
                 continue
-            sum_ = np.dot(x_lp[0:len_ >> 1], y[i:(len_ >> 1)+i])
+            sum_ = np.dot(x_lp[:len_ >> 1], y[i:(len_ >> 1)+i])
             xcorr[i] = max(-1, sum_)
 
         best_pitch = self._find_best_pitch(xcorr, y, len_ >> 1, max_pitch >> 1)
@@ -454,20 +456,15 @@ class RNNoisePreProcess:
         else:
             offset = 0
 
-        pitch = 2*best_pitch[0] - offset
-
-        return pitch
+        return 2*best_pitch[0] - offset
 
     def _find_best_pitch(self, xcorr, y, len_, max_pitch):
         """Ref: https://github.com/xiph/rnnoise/blob/1cbdbcf1283499bbb2230a6b0f126eb9b236defd/src/pitch.c#L46"""
-        Syy = 1
         best_num = [-1, -1]
         best_den = [0, 0]
         best_pitch = [0, 1]
 
-        for j in range(len_):
-            Syy += (y[j] * y[j])
-
+        Syy = 1 + sum((y[j] * y[j]) for j in range(len_))
         for i in range(max_pitch):
             if xcorr[i] > 0:
                 xcorr16 = xcorr[i] * 1e-12  # Avoid problems when squaring.
@@ -528,10 +525,7 @@ class RNNoisePreProcess:
                 break
             # Look for another strong correlation at T1b.
             if k == 2:
-                if (T1+T0) > maxperiod:
-                    T1b = T0
-                else:
-                    T1b = T0 + T1
+                T1b = T0 if (T1+T0) > maxperiod else T0 + T1
             else:
                 T1b = (2*second_check[k]*T0 + k) // (2*k)
 
@@ -561,11 +555,7 @@ class RNNoisePreProcess:
                 g = g1
 
         best_xy = max(0, best_xy)
-        if best_yy <= best_xy:
-            pg = 1.0
-        else:
-            pg = best_xy/(best_yy+1)
-
+        pg = 1.0 if best_yy <= best_xy else best_xy/(best_yy+1)
         xcorr = np.zeros(3)
         for k in range(3):
             xcorr[k] = np.dot(x[x_start:x_start+N], x[x_start-(T+k-1):x_start-(T+k-1)+N])
@@ -581,9 +571,7 @@ class RNNoisePreProcess:
 
         T0_ = 2*T + offset
 
-        if T0_ < minperiod0:
-            T0_ = minperiod0
-
+        T0_ = max(T0_, minperiod0)
         return pg, T0_
 
     def _compute_pitch_gain(self, xy, xx, yy):
@@ -615,9 +603,10 @@ class RNNoisePreProcess:
     def _dct(self, out_, in_):
         """Ref: https://github.com/xiph/rnnoise/blob/1cbdbcf1283499bbb2230a6b0f126eb9b236defd/src/denoise.c#L184"""
         for i in range(self.NB_BANDS):
-            sum_ = 0
-            for j in range(self.NB_BANDS):
-                sum_ += in_[j] * self.dct_table[j*self.NB_BANDS + i]
+            sum_ = sum(
+                in_[j] * self.dct_table[j * self.NB_BANDS + i]
+                for j in range(self.NB_BANDS)
+            )
 
             out_[i] = sum_ * np.sqrt(2.0/22)
 
@@ -694,7 +683,7 @@ class RNNoisePreProcess:
         for i in range(self.FRAME_SIZE):
             out[i] = x[i] + self.synthesis_mem[i]
 
-        self.synthesis_mem[0:self.FRAME_SIZE] = x[self.FRAME_SIZE:]
+        self.synthesis_mem[:self.FRAME_SIZE] = x[self.FRAME_SIZE:]
 
         return out
 
@@ -739,9 +728,7 @@ class RNNoisePreProcess:
         gain_change_count = 0
         count = 0
 
-        while True:
-            if count == max_count:
-                break
+        while count != max_count:
             if count % 1000 == 0:
                 print(f"Generating training data, count: {count}")
             E = 0
@@ -803,8 +790,7 @@ class RNNoisePreProcess:
 
             for i in range(self.NB_BANDS):
                 g[i] = np.sqrt((Ey[i]+1e-3) / (Ex[i]+1e-3))
-                if g[i] > 1:
-                    g[i] = 1
+                g[i] = min(g[i], 1)
                 if silence or i > self.band_lp:
                     g[i] = -1
                 if Ey[i] < 5e-2 and Ex[i] < 5e-2:

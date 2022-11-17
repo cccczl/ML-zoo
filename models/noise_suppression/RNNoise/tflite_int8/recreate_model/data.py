@@ -92,8 +92,6 @@ def load_clean_noisy_wavs(clean_speech_folder, noisy_speech_folder, isolate_nois
             noise_speech_audio.append(noisy_wav)
         except:
             logging.warning(f"Could not process {clean_file}, make sure it exists in both clean and noisy folders.")
-            pass
-
     return clean_speech_audio, noise_speech_audio, isolated_noise_audio
 
 

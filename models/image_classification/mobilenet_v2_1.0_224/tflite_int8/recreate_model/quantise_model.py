@@ -51,7 +51,7 @@ class Quantisation:
 
         model = converter.convert()
 
-        with open(self.output_directory + '/mobilenet_v2_1.0_224_INT8.tflite', 'wb') as f:
+        with open(f'{self.output_directory}/mobilenet_v2_1.0_224_INT8.tflite', 'wb') as f:
             f.write(model)
 
 

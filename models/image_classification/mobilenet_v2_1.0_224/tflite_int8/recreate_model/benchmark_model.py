@@ -44,7 +44,7 @@ def benchmark_tflite_model(tflite_model_path, data_dir = 'data', validation_set_
 
     start = time.time()
     for i, (test_image, class_label) in enumerate(validation_dataset):
-        
+
         test_image = tf.expand_dims(test_image, axis=0)
         test_image = tf.math.divide(test_image, input_scale)
         test_image = tf.math.add(test_image, input_zero_point)
@@ -78,7 +78,7 @@ def benchmark_tflite_model(tflite_model_path, data_dir = 'data', validation_set_
     predictions_array= np.array(predictions)
     true_class_labels_array = np.array(true_class_labels)
     accuracy = (predictions_array == true_class_labels_array).mean()
-        
+
     return accuracy
 
 if __name__ == "__main__":
